@@ -2,6 +2,8 @@
 
 Model Context Protocol server for working with GraphQL servers. It's a simple implementation using an introspection query to read the schema and one tool to query your server.
 
+<a href="https://glama.ai/mcp/servers/4zwa4l8utf"><img width="380" height="200" src="https://glama.ai/mcp/servers/4zwa4l8utf/badge" alt="mcp-graphql MCP server" /></a>
+
 ## Usage
 Run `mcp-graphql` with the correct endpoint, it will automatically try to introspect your queries. You can optionally add a JSON string containing headers if needed.
 
