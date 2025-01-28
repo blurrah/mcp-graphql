@@ -1,5 +1,6 @@
 # mcp-graphql
 
+[![smithery badge](https://smithery.ai/badge/mcp-graphql)](https://smithery.ai/server/mcp-graphql)
 Model Context Protocol server for working with GraphQL servers. It's a simple implementation using an introspection query to read the schema and one tool to query your server.
 
 <a href="https://glama.ai/mcp/servers/4zwa4l8utf"><img width="380" height="200" src="https://glama.ai/mcp/servers/4zwa4l8utf/badge" alt="mcp-graphql MCP server" /></a>
@@ -12,6 +13,15 @@ Run `mcp-graphql` with the correct endpoint, it will automatically try to intros
 mcp-graphql --endpoint http://localhost:3000/graphql --headers '{"X-Custom-Header":"foobar"}'
 ```
 
+### Installing via Smithery
+
+To install GraphQL MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/mcp-graphql):
+
+```bash
+npx -y @smithery/cli install mcp-graphql --client claude
+```
+
+### Installing Manually
 It can be manually installed to Claude:
 ```json
 {
@@ -47,3 +57,4 @@ To build:
 ```bash
 bun run build
 ```
+
