@@ -49,25 +49,23 @@ export async function loadSchemaFromFile(path: string) {
  * @param schema - The GraphQL schema to extract operations from
  * @returns An array of operations
  */
-export async function getOperations(schema: string): Promise<{
-  queries: OperationDefinitionNode[];
-  mutations: OperationDefinitionNode[];
-}> {
+export async function getOperations(
+  schema: string,
+  // Subscriptions are not supported (yet?)
+  allowedOperations: ("query" | "mutation")[]
+): Promise<OperationDefinitionNode[]> {
   const document = parse(schema);
 
   const operationDefinition = document.definitions.filter(
     (definition) => definition.kind === "OperationDefinition"
   );
 
-  // Subscriptions are not supported (yet?)
-  return {
-    queries: operationDefinition.filter(
-      (operation) => operation.operation === "query"
-    ),
-    mutations: operationDefinition.filter(
-      (operation) => operation.operation === "mutation"
-    ),
-  };
+  return operationDefinition.filter((operation) =>
+    allowedOperations.includes(
+      // TODO: Fix with proper types
+      operation.operation as unknown as "query" | "mutation"
+    )
+  );
 }
 
 type Tool = {
@@ -180,39 +178,35 @@ export async function createGraphQLHandler(config: Config) {
     schema = await loadSchema(config.endpoint, config.headers);
   }
 
-  const tools: Array<Tool> = [];
+  const tools = new Map<string, Tool>();
 
   return {
-    async getTools() {
-      const operations = await getOperations(schema);
+    async loadTools() {
+      const operations = await getOperations(
+        schema,
+        config.allowMutations ? ["query", "mutation"] : ["query"]
+      );
 
-      // Add queries
-      for (const operation of operations.queries) {
+      // Add tools
+      for (const operation of operations) {
         if (
           !operation.name?.value ||
-          config.excludeQueries?.includes(operation.name.value)
-        ) {
-          // Operation not found or excluded
-          continue;
-        }
-
-        tools.push(operationToTool(operation));
-      }
-
-      // Add mutations
-      for (const operation of operations.mutations) {
-        if (
-          !operation.name?.value ||
+          config.excludeQueries?.includes(operation.name.value) ||
           config.excludeMutations?.includes(operation.name.value)
         ) {
           // Operation not found or excluded
           continue;
         }
 
-        tools.push(operationToTool(operation));
+        const tool = operationToTool(operation);
+
+        tools.set(tool.name, tool);
       }
 
       return tools;
+    },
+    getTool(name: string) {
+      return tools.get(name);
     },
   };
 }
