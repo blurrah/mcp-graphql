@@ -2,41 +2,20 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { z } from "zod";
 
-export const configSchema = z.discriminatedUnion(
-  "source",
-  [
-    z.object({
-      source: z.literal("endpoint"),
-      // Endpoint for the schema to be introspected and transformed into tools
-      endpoint: z.string().url(),
-      // Headers to be sent with the request to the schema endpoint
-      headers: z.record(z.string()).optional(),
-      // Allow MCP clients to use mutations, can potentially be dangerous so we disable by default
-      allowMutations: z.boolean().optional().default(false),
-      // Queries to exclude from the generated tools
-      excludeQueries: z.array(z.string()).optional(),
-      // Mutations to exclude from the generated tools
-      excludeMutations: z.array(z.string()).optional(),
-    }),
-    z.object({
-      source: z.literal("file"),
-      // File path alternative to endpoint, will read the file instead of fetching the endpoint
-      schemaPath: z.string(),
-      // Allow MCP clients to use mutations, can potentially be dangerous so we disable by default
-      allowMutations: z.boolean().optional().default(false),
-      // Queries to exclude from the generated tools
-      excludeQueries: z.array(z.string()).optional(),
-      // Mutations to exclude from the generated tools
-      excludeMutations: z.array(z.string()).optional(),
-    }),
-  ],
-  {
-    errorMap: () => ({
-      message:
-        "You must provide either an endpoint URL or a schema file path, but not both",
-    }),
-  }
-);
+export const configSchema = z.object({
+  // Endpoint for the schema to be introspected and transformed into tools
+  endpoint: z.string().url(),
+  // File path alternative to endpoint, will read the file instead of fetching the endpoint
+  schemaPath: z.string().optional(),
+  // Headers to be sent with the request to the schema endpoint
+  headers: z.record(z.string()).optional(),
+  // Allow MCP clients to use mutations, can potentially be dangerous so we disable by default
+  allowMutations: z.boolean().optional().default(false),
+  // Queries to exclude from the generated tools
+  excludeQueries: z.array(z.string()).optional().default([]),
+  // Mutations to exclude from the generated tools
+  excludeMutations: z.array(z.string()).optional().default([]),
+});
 
 export type Config = z.infer<typeof configSchema>;
 
@@ -50,7 +29,7 @@ export function parseArgumentsToConfig(): Config {
     .option("schemaPath", {
       type: "string",
       description:
-        "File path alternative to endpoint, will read the file instead of fetching the endpoint",
+        "Alternative path for GraphQL schema file, use this if you cannot introspect the schema from the endpoint",
     })
     .option("headers", {
       type: "string",

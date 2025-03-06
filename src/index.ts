@@ -1,6 +1,10 @@
 // V2 Implementation
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { getVersion } from "../helpers/package";
 import { parseArgumentsToConfig } from "./lib/config";
 import { createGraphQLHandler } from "./lib/graphql";
@@ -12,9 +16,7 @@ const server = new Server(
   {
     name: "mcp-graphql",
     version: getVersion(),
-    description: `GraphQL client for ${
-      config.source === "endpoint" ? config.endpoint : config.schemaPath
-    }`,
+    description: `GraphQL client for ${config.endpoint}`,
   },
   {
     capabilities: {
@@ -28,21 +30,40 @@ const server = new Server(
   }
 );
 
-/**
- * Handles tool calling from the client and executes the tool
- */
-async function handleToolCall(name: string, body: string, variables: string) {
-  const tool = handler.getTool(name);
+server.setRequestHandler(ListToolsRequestSchema, async (request) => {
+  await handler.loadTools();
+
+  console.error(handler.tools);
+
+  const tools = Array.from(handler.tools.values()).map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+    inputSchema: tool.inputSchema,
+  }));
+
+  return {
+    tools,
+  };
+});
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const tool = handler.tools.get(request.params.name);
   if (!tool) {
-    console.error(`Tool ${name} not found`);
     return {
       status: "error",
-      message: `Tool ${name} not found`,
+      message: `Tool ${request.params.name} not found`,
     };
   }
-  const result = await handler.execute(tool, body, variables);
+
+  const parsedArguments = tool.parameters.parse(request.params.arguments);
+
+  const result = await handler.execute(
+    parsedArguments.query,
+    parsedArguments.variables
+  );
   return result;
-}
+});
 
 /**
  * Sets up the transport and starts the server with it
@@ -53,9 +74,7 @@ async function main() {
 
   server.sendLoggingMessage({
     level: "info",
-    message: `Started mcp-graphql server for ${
-      config.source === "endpoint" ? config.endpoint : config.schemaPath
-    }`,
+    message: `Started mcp-graphql server for ${config.endpoint}`,
   });
 }
 

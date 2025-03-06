@@ -24,6 +24,8 @@
   },
   "scripts": {
     "dev": "bun --watch index.ts",
-    "build": "bun build index.ts --outdir dist --target node && bun -e \"require('fs').chmodSync('dist/index.js', '755')\""
+    "build": "bun build index.ts --outdir dist --target node && bun -e \"require('fs').chmodSync('dist/index.js', '755')\"",
+    "build:new": "bun build src/index.ts --outdir dist --target node && bun -e \"require('fs').chmodSync('dist/index.js', '755')\"",
+    "start": "bun run dist/index.js --endpoint https://beta.pokeapi.co/graphql/v1beta"
   }
 }

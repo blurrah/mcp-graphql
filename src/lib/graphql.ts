@@ -1,71 +1,115 @@
 // Contains Schema parsing and transformation logic
 
 import {
+  type GraphQLArgument,
+  type GraphQLSchema,
   Kind,
-  type OperationDefinitionNode,
   type TypeNode,
   type VariableDefinitionNode,
+  buildClientSchema,
+  buildSchema,
   getIntrospectionQuery,
-  parse,
+  printSchema,
 } from "graphql";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
 import zodToJsonSchema, { type JsonSchema7Type } from "zod-to-json-schema";
 import type { Config } from "./config";
 
-export async function loadSchema(
+export async function loadSchemaFromIntrospection(
   endpoint: string,
   headers?: Record<string, string>
-) {
-  if (endpoint) {
-    const response = await fetch(endpoint, {
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
-      body: JSON.stringify({
-        query: getIntrospectionQuery(),
-      }),
-    });
+): Promise<GraphQLSchema> {
+  const response = await fetch(endpoint, {
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    method: "POST",
+    body: JSON.stringify({
+      query: getIntrospectionQuery(),
+    }),
+  });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch GraphQL schema: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    return data;
+  if (!response.ok) {
+    throw new Error(`Failed to fetch GraphQL schema: ${response.statusText}`);
   }
+
+  const responseJson = await response.json();
+
+  if (responseJson.errors) {
+    throw new Error(
+      `Failed to fetch GraphQL schema: ${JSON.stringify(responseJson.errors)}`
+    );
+  }
+
+  if (!responseJson.data.__schema) {
+    throw new Error(`Invalid schema found at ${JSON.stringify(responseJson)}`);
+  }
+
+  const schemaObj = buildClientSchema(responseJson.data);
+
+  const sdl = printSchema(schemaObj);
+
+  // Debug code to not rate limit the endpoint:
+  await writeFile("schema.graphql", sdl);
+
+  return schemaObj;
 }
 
-export async function loadSchemaFromFile(path: string) {
+export async function loadSchemaFromFile(path: string): Promise<GraphQLSchema> {
   const data = await readFile(path, "utf-8");
 
-  return data;
+  return buildSchema(data);
 }
+
+type Operation = {
+  name: string;
+  type: "query" | "mutation";
+  description: string | undefined | null;
+  parameters: readonly GraphQLArgument[];
+};
 
 /**
  * Extracts all operations from a GraphQL schema and return them in a structured format
  * @param schema - The GraphQL schema to extract operations from
  * @returns An array of operations
  */
-export async function getOperations(
-  schema: string,
+export function getOperations(
+  schema: GraphQLSchema,
   // Subscriptions are not supported (yet?)
-  allowedOperations: ("query" | "mutation")[]
-): Promise<OperationDefinitionNode[]> {
-  const document = parse(schema);
+  allowedOperations: ("query" | "mutation")[] = ["query", "mutation"]
+): Operation[] {
+  const operations: Operation[] = [];
 
-  const operationDefinition = document.definitions.filter(
-    (definition) => definition.kind === "OperationDefinition"
-  );
+  if (allowedOperations.includes("query")) {
+    const queryType = schema.getQueryType();
+    const queryFields = queryType?.getFields();
+    for (const [fieldName, field] of Object.entries(queryFields || {})) {
+      operations.push({
+        name: fieldName,
+        type: "query",
+        description: field.description,
+        parameters: field.args,
+      });
+    }
+  }
 
-  return operationDefinition.filter((operation) =>
-    allowedOperations.includes(
-      // TODO: Fix with proper types
-      operation.operation as unknown as "query" | "mutation"
-    )
-  );
+  if (allowedOperations.includes("mutation")) {
+    const mutationType = schema.getMutationType();
+    const mutationFields = mutationType?.getFields();
+    for (const [fieldName, field] of Object.entries(mutationFields || {})) {
+      operations.push({
+        name: fieldName,
+        type: "mutation",
+        description: field.description,
+        parameters: field.args,
+      });
+    }
+  }
+
+  console.error(operations.length);
+  return operations;
 }
 
 type Tool = {
@@ -80,27 +124,27 @@ type Tool = {
  * @param operation - The GraphQL operation to convert
  * @returns A MCP tool object
  */
-export function operationToTool(operation: OperationDefinitionNode): Tool {
+export function operationToTool(operation: Operation): Tool {
   // Import necessary types if they're not already imported
 
+  if (!operation.name) {
+    // Should never reach this as we already filter out operations without a name earlier
+    throw new Error("Operation name is required");
+  }
+
   // Create a name for the tool based on the operation
-  const name = operation.name?.value
-    ? `${operation.operation}-${operation.name.value}`
-    : `anonymous-${operation.operation}`;
+  const name = `${operation.type}-${operation.name}`;
 
   // Get description from the operation or use a default
-  const description =
-    operation.name?.value || `Anonymous ${operation.operation}`;
+  const description = operation.description;
 
   // Build parameters schema based on variable definitions
-  const paramSchema = buildZodSchemaFromVariables(
-    operation.variableDefinitions || []
-  );
+  const paramSchema = buildZodSchemaFromVariables(operation.parameters);
 
   // Return the tool object
   return {
     name,
-    description,
+    description: description || "",
     parameters: paramSchema,
     inputSchema: zodToJsonSchema(paramSchema),
   };
@@ -170,43 +214,57 @@ function namedTypeToZodSchema(typeName: string): z.ZodTypeAny {
 }
 
 export async function createGraphQLHandler(config: Config) {
-  let schema: string;
+  let schema: GraphQLSchema;
 
-  if (config.source === "file") {
+  if (config.schemaPath) {
     schema = await loadSchemaFromFile(config.schemaPath);
-  } else if (config.source === "endpoint") {
-    schema = await loadSchema(config.endpoint, config.headers);
+  } else {
+    // Fall back to introspection if no schema path is provided
+    schema = await loadSchemaFromIntrospection(config.endpoint, config.headers);
   }
 
   const tools = new Map<string, Tool>();
 
-  return {
-    async loadTools() {
-      const operations = await getOperations(
-        schema,
-        config.allowMutations ? ["query", "mutation"] : ["query"]
-      );
+  async function loadTools() {
+    const operations = getOperations(
+      schema,
+      config.allowMutations ? ["query", "mutation"] : ["query"]
+    );
 
-      // Add tools
-      for (const operation of operations) {
-        if (
-          !operation.name?.value ||
-          config.excludeQueries?.includes(operation.name.value) ||
-          config.excludeMutations?.includes(operation.name.value)
-        ) {
-          // Operation not found or excluded
-          continue;
-        }
-
-        const tool = operationToTool(operation);
-
-        tools.set(tool.name, tool);
+    // Add tools
+    for (const operation of operations) {
+      if (
+        !operation.name ||
+        config.excludeQueries.includes(operation.name) ||
+        config.excludeMutations.includes(operation.name)
+      ) {
+        // Operation not found or excluded
+        console.error(`Skipping operation ${operation.name} as it is excluded`);
+        continue;
       }
 
-      return tools;
-    },
-    getTool(name: string) {
-      return tools.get(name);
+      const tool = operationToTool(operation);
+
+      tools.set(tool.name, tool);
+    }
+  }
+
+  // Load initial tools
+  await loadTools();
+
+  return {
+    tools,
+    loadTools,
+    async execute(query: string, variables: unknown) {
+      const result = await fetch(config.endpoint, {
+        method: "POST",
+        body: JSON.stringify({ query, variables }),
+      });
+
+      return {
+        status: "success",
+        data: await result.json(),
+      };
     },
   };
 }
