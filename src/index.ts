@@ -14,9 +14,9 @@ const handler = await createGraphQLHandler(config);
 
 const server = new Server(
   {
-    name: "mcp-graphql",
+    name: config.name,
     version: getVersion(),
-    description: `GraphQL client for ${config.endpoint}`,
+    description: `GraphQL server for ${config.endpoint}`,
   },
   {
     capabilities: {

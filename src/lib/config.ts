@@ -3,6 +3,7 @@ import { hideBin } from "yargs/helpers";
 import { z } from "zod";
 
 export const configSchema = z.object({
+  name: z.string().default("mcp-graphql"),
   // Endpoint for the schema to be introspected and transformed into tools
   endpoint: z.string().url(),
   // File path alternative to endpoint, will read the file instead of fetching the endpoint
@@ -21,6 +22,11 @@ export type Config = z.infer<typeof configSchema>;
 
 export function parseArgumentsToConfig(): Config {
   const argv = yargs(hideBin(process.argv))
+    .option("name", {
+      type: "string",
+      description:
+        "Name of the MCP server, can be used if you want to override the default name",
+    })
     .option("endpoint", {
       type: "string",
       description:
