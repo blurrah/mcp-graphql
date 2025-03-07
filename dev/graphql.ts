@@ -2,6 +2,16 @@ import { makeExecutableSchema } from "@graphql-tools/schema";
 import { createYoga } from "graphql-yoga";
 import fs from "node:fs";
 
+/**
+ * Simple GraphQL server implementation for testing purposes
+ *
+ * This is a simple GraphQL server implementation for testing purposes.
+ * It is not intended to be used in production.
+ *
+ * It is used to test the GraphQL schema and resolvers.
+ *
+ */
+
 // Define types
 interface User {
   id: string;
