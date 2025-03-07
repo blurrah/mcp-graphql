@@ -13,6 +13,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/yargs": "17.0.33",
+    "graphql-yoga": "^5.13.1",
     "typescript": "5.7.2"
   },
   "dependencies": {
