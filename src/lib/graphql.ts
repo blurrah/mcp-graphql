@@ -4,12 +4,14 @@ import {
   type GraphQLArgument,
   type GraphQLInputType,
   GraphQLNonNull,
+  type GraphQLOutputType,
   type GraphQLSchema,
   buildClientSchema,
   buildSchema,
   getIntrospectionQuery,
   isInputObjectType,
   isListType,
+  isNonNullType,
   isScalarType,
   printSchema,
 } from "graphql";
@@ -92,9 +94,25 @@ export function getOperations(
         name: fieldName,
         type: "query",
         // TODO: Add all the possibly output types to the description
-        description: field.description,
+        description: createOperationDescription(schema, {
+          name: fieldName,
+          type: "query",
+          parameters: field.args,
+          description: field.description,
+        } satisfies Operation),
         parameters: field.args,
       });
+
+      if (fieldName === "commentsByPost") {
+        console.error(
+          createOperationDescription(schema, {
+            name: fieldName,
+            type: "query",
+            parameters: field.args,
+            description: field.description,
+          } satisfies Operation)
+        );
+      }
     }
   }
 
@@ -105,7 +123,12 @@ export function getOperations(
       operations.push({
         name: fieldName,
         type: "mutation",
-        description: field.description,
+        description: createOperationDescription(schema, {
+          name: fieldName,
+          type: "mutation",
+          parameters: field.args,
+          description: field.description,
+        } satisfies Operation),
         parameters: field.args,
       });
     }
@@ -172,7 +195,15 @@ function buildZodSchemaFromVariables(
 
 function argumentToZodSchema(argument: GraphQLArgument): z.ZodTypeAny {
   // Build individual zod schema's
-  function convertToZodSchema(type: GraphQLInputType): z.ZodTypeAny {
+  function convertToZodSchema(
+    type: GraphQLInputType,
+    maxDepth = 3
+  ): z.ZodTypeAny {
+    if (maxDepth === 0) {
+      // Fall back to any type when we reach recursion limit, especially with circular references to input types this can get quite intensive
+      return z.any();
+    }
+
     if (type instanceof GraphQLNonNull) {
       // Non-null type, need to go deeper
       return convertToZodSchema(type.ofType);
@@ -197,8 +228,8 @@ function argumentToZodSchema(argument: GraphQLArgument): z.ZodTypeAny {
       for (const [fieldName, field] of Object.entries(fields)) {
         shape[fieldName] =
           field.type instanceof GraphQLNonNull
-            ? convertToZodSchema(field.type)
-            : convertToZodSchema(field.type).optional();
+            ? convertToZodSchema(field.type, maxDepth - 1)
+            : convertToZodSchema(field.type, maxDepth - 1).optional();
       }
 
       return z.object(shape).optional();
@@ -272,4 +303,125 @@ export async function createGraphQLHandler(config: Config) {
       };
     },
   };
+}
+
+/**
+ * Extracts the output type information from a GraphQL operation
+ * @param schema - The GraphQL schema
+ * @param operation - The GraphQL operation
+ * @returns A string representation of the output type structure
+ */
+function getOperationOutputType(
+  schema: GraphQLSchema,
+  operation: Operation
+): string {
+  const typeMap = schema.getTypeMap();
+  let outputType: GraphQLOutputType | undefined;
+
+  if (operation.type === "query") {
+    const queryType = schema.getQueryType();
+    if (queryType) {
+      const field = queryType.getFields()[operation.name];
+      if (field) {
+        outputType = field.type;
+      }
+    }
+  } else if (operation.type === "mutation") {
+    const mutationType = schema.getMutationType();
+    if (mutationType) {
+      const field = mutationType.getFields()[operation.name];
+      if (field) {
+        outputType = field.type;
+      }
+    }
+  }
+
+  if (!outputType) {
+    return "Unknown output type";
+  }
+
+  // Generate a string representation of the output type
+  return printType(outputType, schema);
+}
+
+/**
+ * Recursively prints a GraphQL type structure
+ * @param type - The GraphQL type to print
+ * @param schema - The GraphQL schema
+ * @param depth - Current recursion depth to prevent infinite loops
+ * @returns A string representation of the type
+ */
+function printType(
+  type: GraphQLOutputType,
+  schema: GraphQLSchema,
+  depth = 0
+): string {
+  if (depth > 5) return "..."; // Prevent too deep recursion, should I add it in text here?
+
+  // Handle non-null and list wrappers
+  if ("ofType" in type) {
+    if (isListType(type)) {
+      return `[${printType(type.ofType, schema, depth)}]`;
+    }
+    if (isNonNullType(type)) {
+      // Not sure why typescript goes to never typing here, need to check later
+      return `${printType(
+        (type as GraphQLNonNull<GraphQLOutputType>).ofType,
+        schema,
+        depth
+      )}!`;
+    }
+  }
+  // Handle scalar types
+  if (isScalarType(type)) {
+    return type.name;
+  }
+
+  // Handle enum types
+  if (type.astNode?.kind === "EnumTypeDefinition") {
+    return `ENUM ${type.name}`;
+  }
+
+  // Handle object types
+  if ("getFields" in type && typeof type.getFields === "function") {
+    const fields = type.getFields();
+    const fieldStrings = Object.entries(fields).map(([name, field]) => {
+      return `  ${name}: ${printType(field.type, schema, depth + 1)}`;
+    });
+
+    return `{\n${fieldStrings.join("\n")}\n}`;
+  }
+
+  return "name" in type ? type.name : "Unknown";
+}
+
+function createOperationDescription(
+  schema: GraphQLSchema,
+  operation: Operation
+) {
+  const outputTypeInfo = getOperationOutputType(schema, operation);
+  return `
+  This is a GraphQL ${operation.type} operation: "${operation.name}"
+
+DESCRIPTION:
+${operation.description || "No description available"}
+
+PARAMETERS:
+${
+  operation.parameters.length > 0
+    ? operation.parameters
+        .map(
+          (param) =>
+            `- ${param.name}: ${param.type.toString()}${
+              param.description ? ` - ${param.description}` : ""
+            }`
+        )
+        .join("\n")
+    : "No parameters required"
+}
+
+OUTPUT TYPE:
+${outputTypeInfo}
+
+When you use this operation, you'll receive a response with this structure.`;
 }
