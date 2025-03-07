@@ -354,21 +354,21 @@ function getOperationOutputType(
 function printType(
   type: GraphQLOutputType,
   schema: GraphQLSchema,
-  depth = 0
+  maxDepth = 5
 ): string {
-  if (depth > 5) return "..."; // Prevent too deep recursion, should I add it in text here?
+  if (maxDepth === 0) return "..."; // Prevent too deep recursion, should I add it in text here?
 
   // Handle non-null and list wrappers
   if ("ofType" in type) {
     if (isListType(type)) {
-      return `[${printType(type.ofType, schema, depth)}]`;
+      return `[${printType(type.ofType, schema, maxDepth)}]`;
     }
     if (isNonNullType(type)) {
       // Not sure why typescript goes to never typing here, need to check later
       return `${printType(
         (type as GraphQLNonNull<GraphQLOutputType>).ofType,
         schema,
-        depth
+        maxDepth
       )}!`;
     }
   }
@@ -385,8 +385,12 @@ function printType(
   // Handle object types
   if ("getFields" in type && typeof type.getFields === "function") {
     const fields = type.getFields();
+    if (maxDepth - 1 === 0) {
+      // Return the type name if we are at the max depth already
+      return type.name;
+    }
     const fieldStrings = Object.entries(fields).map(([name, field]) => {
-      return `  ${name}: ${printType(field.type, schema, depth + 1)}`;
+      return `  ${name}: ${printType(field.type, schema, maxDepth - 1)}`;
     });
 
     return `{\n${fieldStrings.join("\n")}\n}`;
