@@ -2,13 +2,15 @@
 
 import {
   type GraphQLArgument,
+  type GraphQLInputType,
+  GraphQLNonNull,
   type GraphQLSchema,
-  Kind,
-  type TypeNode,
-  type VariableDefinitionNode,
   buildClientSchema,
   buildSchema,
   getIntrospectionQuery,
+  isInputObjectType,
+  isListType,
+  isScalarType,
   printSchema,
 } from "graphql";
 import { readFile, writeFile } from "node:fs/promises";
@@ -89,6 +91,7 @@ export function getOperations(
       operations.push({
         name: fieldName,
         type: "query",
+        // TODO: Add all the possibly output types to the description
         description: field.description,
         parameters: field.args,
       });
@@ -156,61 +159,63 @@ export function operationToTool(operation: Operation): Tool {
  * @returns A Zod schema object
  */
 function buildZodSchemaFromVariables(
-  variableDefinitions: ReadonlyArray<VariableDefinitionNode>
+  variableDefinitions: ReadonlyArray<GraphQLArgument>
 ) {
   const schemaObj: Record<string, z.ZodTypeAny> = {};
 
-  for (const varDef of variableDefinitions) {
-    const varName = varDef.variable.name.value;
-    schemaObj[varName] = typeNodeToZodSchema(varDef.type);
+  for (const definition of variableDefinitions) {
+    schemaObj[definition.name] = argumentToZodSchema(definition);
   }
 
   return z.object(schemaObj);
 }
 
-/**
- * Converts a GraphQL type node to a Zod schema
- * @param typeNode - The GraphQL type node
- * @returns A Zod schema
- */
-function typeNodeToZodSchema(typeNode: TypeNode): z.ZodTypeAny {
-  switch (typeNode.kind) {
-    case Kind.NON_NULL_TYPE:
-      return typeNodeToZodSchema(typeNode.type);
+function argumentToZodSchema(argument: GraphQLArgument): z.ZodTypeAny {
+  // Build individual zod schema's
+  function convertToZodSchema(type: GraphQLInputType): z.ZodTypeAny {
+    if (type instanceof GraphQLNonNull) {
+      // Non-null type, need to go deeper
+      return convertToZodSchema(type.ofType);
+    }
 
-    case Kind.LIST_TYPE:
-      return z.array(typeNodeToZodSchema(typeNode.type));
+    if (isListType(type)) {
+      return z.array(convertToZodSchema(type.ofType));
+    }
 
-    case Kind.NAMED_TYPE:
-      return namedTypeToZodSchema(typeNode.name.value);
+    if (isScalarType(type)) {
+      if (type.name === "String" || type.name === "ID") return z.string();
+      if (type.name === "Int") return z.number().int();
+      if (type.name === "Float") return z.number();
+      if (type.name === "Boolean") return z.boolean();
+      // Fall back to string for now when using custom scalars
+      return z.string();
+    }
 
-    default:
-      return z.any();
+    if (isInputObjectType(type)) {
+      const fields = type.getFields();
+      const shape: Record<string, z.ZodTypeAny> = {};
+      for (const [fieldName, field] of Object.entries(fields)) {
+        shape[fieldName] =
+          field.type instanceof GraphQLNonNull
+            ? convertToZodSchema(field.type)
+            : convertToZodSchema(field.type).optional();
+      }
+
+      return z.object(shape).optional();
+    }
+
+    // Fall back to any type for now, hopefully extra input context will help an LLM with this
+    return z.any();
   }
-}
 
-/**
- * Converts a GraphQL named type to a Zod schema
- * @param typeName - The name of the GraphQL type
- * @returns A Zod schema
- */
-function namedTypeToZodSchema(typeName: string): z.ZodTypeAny {
-  switch (typeName) {
-    case "String":
-      return z.string();
-    case "Int":
-      return z.number().int();
-    case "Float":
-      return z.number();
-    case "Boolean":
-      return z.boolean();
-    case "ID":
-      return z.string();
-    default:
-      // We just fallback to string for now when using custom scalars
-      // TODO: Handle custom scalars using configuration
-      return z.string();
+  const zodField = convertToZodSchema(argument.type);
+
+  // Default value is not part of the type, so we add it outside of the type converter
+  if (argument.defaultValue !== undefined) {
+    zodField.default(argument.defaultValue);
   }
+
+  return zodField;
 }
 
 export async function createGraphQLHandler(config: Config) {
