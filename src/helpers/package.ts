@@ -7,9 +7,9 @@ const __dirname = dirname(__filename);
 
 // Current package version so I only need to update it in one place
 const { version } = JSON.parse(
-  readFileSync(join(__dirname, "../package.json"), "utf-8")
+	readFileSync(join(__dirname, "../../package.json"), "utf-8"),
 );
 
 export function getVersion() {
-  return version;
+	return version;
 }

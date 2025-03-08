@@ -11,21 +11,24 @@
     "dist"
   ],
   "devDependencies": {
+    "@graphql-tools/schema": "^10.0.21",
     "@standard-schema/spec": "^1.0.0",
     "@types/bun": "latest",
     "@types/yargs": "17.0.33",
-    "typescript": "5.7.2"
+    "graphql-yoga": "^5.13.1",
+    "typescript": "5.8.2"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.0.4",
+    "@modelcontextprotocol/sdk": "1.6.1",
     "graphql": "^16.10.0",
     "yargs": "17.7.2",
-    "zod": "3.24.1",
-    "zod-to-json-schema": "3.24.1"
+    "zod": "3.24.2",
+    "zod-to-json-schema": "3.24.3"
   },
   "scripts": {
-    "dev": "bun --watch index.ts",
-    "build": "bun build index.ts --outdir dist --target node && bun -e \"require('fs').chmodSync('dist/index.js', '755')\""
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target node && bun -e \"require('fs').chmodSync('dist/index.js', '755')\"",
+    "start": "bun run dist/index.js"
   },
-  "packageManager": "pnpm@8.15.8+sha512.d1a029e1a447ad90bc96cd58b0fad486d2993d531856396f7babf2d83eb1823bb83c5a3d0fc18f675b2d10321d49eb161fece36fe8134aa5823ecd215feed392"
+  "packageManager": "bun@1.2.4"
 }
