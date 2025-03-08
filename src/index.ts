@@ -77,7 +77,7 @@ const config = parseArgs();
 const server = new McpServer({
 	name: config.name,
 	version: getVersion(),
-	description: `GraphQL client for ${config.endpoint}`,
+	description: `GraphQL MCP server for ${config.endpoint}`,
 });
 
 server.resource(
