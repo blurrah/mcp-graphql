@@ -15,6 +15,7 @@ import { hideBin } from "yargs/helpers";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import { getVersion } from "./helpers/package.js" with { type: "macro" };
+import { tools } from "./tools.js";
 
 const GraphQLSchema = z.object({
   query: z.string(),
@@ -148,22 +149,44 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
 server.setRequestHandler(ListToolsRequestSchema, async (request) => {
   return {
-    tools: [
-      {
-        name: "query-graphql",
-        description: "Query a GraphQL server",
-        parameters: GraphQLSchema,
-        inputSchema: graphQLJsonSchema,
-      },
-    ],
+    tools: tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.args,
+      // biome-ignore lint/suspicious/noExplicitAny: standard schema -> zod transform
+      inputSchema: tool.args ? zodToJsonSchema(tool.args as any, "args").definitions?.args : {type: "object"},
+    })),
   };
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.name !== "query-graphql") {
+
+  const tool = tools.find((tool) => tool.name === request.params.name);
+
+  if (!tool) {
     throw new Error("Invalid tool name");
   }
 
+  let args = request.params.arguments;
+
+  if (tool.args) {
+    const validated = await tool.args["~standard"].validate(args);
+    if (validated.issues) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: `Invalid arguments: ${validated.issues.map((issue) => issue.message).join(", ")}`,
+          },
+        ],
+      };
+    }
+    args = validated.value as Record<string, unknown>;
+  }
+  const { query, variables } = GraphQLSchema.parse(request.params.arguments);
+
+  if (request.params.name === "query-graphql") {
   const { query, variables } = GraphQLSchema.parse(request.params.arguments);
 
   server.sendLoggingMessage({
@@ -237,6 +260,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     });
     throw new Error(`Failed to execute GraphQL query: ${error}`);
   }
+}
 });
 
 async function main() {

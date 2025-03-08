@@ -175,3 +175,6 @@ dist
 .DS_Store
 
 dist/
+
+# GraphQL schema for debugging
+/schema.graphql
