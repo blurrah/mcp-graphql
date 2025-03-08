@@ -33,8 +33,6 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async (request) => {
   await handler.loadTools();
 
-  console.error(handler.tools);
-
   const tools = Array.from(handler.tools.values()).map((tool) => ({
     name: tool.name,
     description: tool.description,
@@ -56,7 +54,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
 
+  console.error("tool call", request.params.arguments);
+
   const parsedArguments = tool.parameters.parse(request.params.arguments);
+
+  console.error("parsed arguments", parsedArguments);
 
   const result = await handler.execute(
     parsedArguments.query,

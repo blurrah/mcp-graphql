@@ -102,17 +102,6 @@ export function getOperations(
         } satisfies Operation),
         parameters: field.args,
       });
-
-      if (fieldName === "commentsByPost") {
-        console.error(
-          createOperationDescription(schema, {
-            name: fieldName,
-            type: "query",
-            parameters: field.args,
-            description: field.description,
-          } satisfies Operation)
-        );
-      }
     }
   }
 
@@ -190,7 +179,10 @@ function buildZodSchemaFromVariables(
     schemaObj[definition.name] = argumentToZodSchema(definition);
   }
 
-  return z.object(schemaObj);
+  return z.object({
+    variables: z.object(schemaObj),
+    query: z.string(),
+  });
 }
 
 function argumentToZodSchema(argument: GraphQLArgument): z.ZodTypeAny {
@@ -292,10 +284,14 @@ export async function createGraphQLHandler(config: Config) {
     tools,
     loadTools,
     async execute(query: string, variables: unknown) {
+      const body = JSON.stringify({ query, variables });
+      console.error("body", body);
       const result = await fetch(config.endpoint, {
         method: "POST",
-        body: JSON.stringify({ query, variables }),
+        body,
       });
+
+      console.error("result", await result.json());
 
       return {
         status: "success",

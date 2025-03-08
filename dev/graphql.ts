@@ -274,7 +274,15 @@ const yoga = createYoga({ schema });
 // Start server with proper request handler
 const server = Bun.serve({
   port: 4000,
-  fetch: (request) => yoga.fetch(request),
+  fetch: (request) => {
+    // Add dev logger for incoming requests
+    console.log(
+      `[${new Date().toISOString()}] Incoming request: ${request.method} ${
+        request.url
+      }`
+    );
+    return yoga.fetch(request);
+  },
 });
 
 console.info(
