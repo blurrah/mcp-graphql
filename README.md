@@ -33,7 +33,10 @@ It can be manually installed to Claude:
     }
 }
 ```
-Smithery/Zed extensions will be available in the near future.
+
+### Enabling mutations
+
+Mutations are disabled by default as to not allow an LLM to mutate your database or service. You can enable them by using `--enable-mutations` as a flag.
 
 ## Customize for your own server
 This is a very generic implementation where it allows for complete introspection and for your users to do whatever (including mutations). If you need a more specific implementation I'd suggest to just create your own MCP and lock down tool calling for clients to only input specific query fields and/or variables. You can use this as a reference.
