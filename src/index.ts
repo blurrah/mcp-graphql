@@ -100,7 +100,6 @@ server.resource(
 			}
 
 			const responseJson = await response.json();
-
 			const schema = buildClientSchema(responseJson.data);
 
 			return {
@@ -138,7 +137,6 @@ server.tool(
 			}
 
 			const responseJson = await response.json();
-
 			const schema = buildClientSchema(responseJson.data);
 
 			return {
