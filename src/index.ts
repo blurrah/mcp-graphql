@@ -11,6 +11,7 @@ import {
 	introspectLocalSchema,
 } from "./helpers/introspection.js";
 import { getVersion } from "./helpers/package.js" with { type: "macro" };
+import { parseAndMergeHeaders } from "./helpers/headers.js";
 
 const graphQLSchema = z.object({
 	query: z.string(),
@@ -113,14 +114,19 @@ server.resource(
 server.tool(
 	"introspect-schema",
 	"Introspect the GraphQL schema, use this tool before doing a query to get the schema information if you do not have it available as a resource already.",
-	{},
-	async () => {
+	{
+		endpoint: z.string().url().optional(),
+		headers: z.union([z.record(z.string()), z.string()]).optional(),
+	},
+	async ({ endpoint, headers }) => {
 		try {
 			let schema: string;
 			if (config.schema) {
 				schema = await introspectLocalSchema(config.schema);
 			} else {
-				schema = await introspectEndpoint(config.endpoint, config.headers);
+				const useEndpoint = endpoint || config.endpoint;
+				const useHeaders = parseAndMergeHeaders(config.headers, headers);
+				schema = await introspectEndpoint(useEndpoint, useHeaders);
 			}
 
 			return {
@@ -140,8 +146,13 @@ server.tool(
 server.tool(
 	"query-graphql",
 	"Query a GraphQL endpoint with the given query and variables",
-	{ query: z.string(), variables: z.string().optional() },
-	async ({ query, variables }) => {
+	{
+		query: z.string(),
+		variables: z.string().optional(),
+		endpoint: z.string().url().optional(),
+		headers: z.union([z.record(z.string()), z.string()]).optional(),
+	},
+	async ({ query, variables, endpoint, headers }) => {
 		try {
 			const parsedQuery = parse(query);
 
@@ -175,11 +186,14 @@ server.tool(
 		}
 
 		try {
-			const response = await fetch(config.endpoint, {
+			const useEndpoint = endpoint || config.endpoint;
+			const useHeaders = parseAndMergeHeaders(config.headers, headers);
+			
+			const response = await fetch(useEndpoint, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					...config.headers,
+					...useHeaders,
 				},
 				body: JSON.stringify({
 					query,
