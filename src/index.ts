@@ -115,8 +115,10 @@ server.tool(
 	"introspect-schema",
 	"Introspect the GraphQL schema, use this tool before doing a query to get the schema information if you do not have it available as a resource already.",
 	{
-		endpoint: z.string().url().optional(),
-		headers: z.union([z.record(z.string()), z.string()]).optional(),
+		endpoint: z.string().url().optional()
+			.describe(`Optional: Override the default endpoint, the already used endpoint is: ${config.endpoint}`),
+		headers: z.union([z.record(z.string()), z.string()]).optional()
+			.describe(`Optional: Add additional headers, the already used headers are: ${JSON.stringify(config.headers)}`),
 	},
 	async ({ endpoint, headers }) => {
 		try {
@@ -149,8 +151,10 @@ server.tool(
 	{
 		query: z.string(),
 		variables: z.string().optional(),
-		endpoint: z.string().url().optional(),
-		headers: z.union([z.record(z.string()), z.string()]).optional(),
+		endpoint: z.string().url().optional()
+			.describe(`Optional: Override the default endpoint, the already used endpoint is: ${config.endpoint}`),
+		headers: z.union([z.record(z.string()), z.string()]).optional()
+			.describe(`Optional: Add additional headers, the already used headers are: ${JSON.stringify(config.headers)}`),
 	},
 	async ({ query, variables, endpoint, headers }) => {
 		try {
