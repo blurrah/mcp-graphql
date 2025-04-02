@@ -59,8 +59,11 @@ function parseArgs(): Config {
 
 	try {
 		return ConfigSchema.parse({
+			name: argv.name,
 			endpoint: argv.endpoint,
+			allowMutations: argv["enable-mutations"],
 			headers: typeof argv.headers === "string" ? JSON.parse(argv.headers) : {},
+			schema: argv.schema
 		});
 	} catch (error) {
 		if (error instanceof z.ZodError) {
