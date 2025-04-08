@@ -2,7 +2,7 @@
   "name": "mcp-graphql",
   "module": "index.ts",
   "type": "module",
-  "version": "0.3.3",
+  "version": "1.0.0",
   "repository": "github:blurrah/mcp-graphql",
   "license": "MIT",
   "bin": {
