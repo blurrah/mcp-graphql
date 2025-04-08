@@ -4,12 +4,16 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { parse } from "graphql/language";
 import { z } from "zod";
+import { checkDeprecatedArguments } from "./helpers/deprecation.js";
 import { parseAndMergeHeaders } from "./helpers/headers.js";
 import {
 	introspectEndpoint,
 	introspectLocalSchema,
 } from "./helpers/introspection.js";
 import { getVersion } from "./helpers/package.js" with { type: "macro" };
+
+// Check for deprecated command line arguments
+checkDeprecatedArguments();
 
 const EnvSchema = z.object({
 	NAME: z.string().default("mcp-graphql"),
