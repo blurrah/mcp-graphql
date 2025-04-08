@@ -11,19 +11,6 @@ import {
 } from "./helpers/introspection.js";
 import { getVersion } from "./helpers/package.js" with { type: "macro" };
 
-const graphQLSchema = z.object({
-	query: z.string(),
-	variables: z.string().optional(),
-});
-
-const ConfigSchema = z.object({
-	name: z.string().default("mcp-graphql"),
-	allowMutations: z.boolean().default(false),
-	endpoint: z.string().url().default("http://localhost:4000/graphql"),
-	headers: z.record(z.string()).default({}),
-	schema: z.string().optional(),
-});
-
 const EnvSchema = z.object({
 	NAME: z.string().default("mcp-graphql"),
 	ENDPOINT: z.string().url().default("http://localhost:4000/graphql"),
