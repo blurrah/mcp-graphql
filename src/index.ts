@@ -3,15 +3,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { parse } from "graphql/language";
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
 import { z } from "zod";
+import { parseAndMergeHeaders } from "./helpers/headers.js";
 import {
 	introspectEndpoint,
 	introspectLocalSchema,
 } from "./helpers/introspection.js";
 import { getVersion } from "./helpers/package.js" with { type: "macro" };
-import { parseAndMergeHeaders } from "./helpers/headers.js";
 
 const graphQLSchema = z.object({
 	query: z.string(),
@@ -26,111 +24,79 @@ const ConfigSchema = z.object({
 	schema: z.string().optional(),
 });
 
-type Config = z.infer<typeof ConfigSchema>;
-
-function parseArgs(): Config {
-	const argv = yargs(hideBin(process.argv))
-		.option("name", {
-			type: "string",
-			description: "Name of the MCP server",
-			default: "mcp-graphql",
-		})
-		.option("endpoint", {
-			type: "string",
-			description: "GraphQL endpoint URL",
-			default: "http://localhost:4000/graphql",
-		})
-		.option("enable-mutations", {
-			type: "boolean",
-			description: "Enable mutations",
-			default: false,
-		})
-		.option("headers", {
-			type: "string",
-			description: "JSON string of headers to send with requests",
-			default: "{}",
-		})
-		.option("schema", {
-			type: "string",
-			description: "Path to a local GraphQL schema file",
-		})
-		.help()
-		.parseSync();
-
-	try {
-		return ConfigSchema.parse({
-			name: argv.name,
-			endpoint: argv.endpoint,
-			allowMutations: argv["enable-mutations"],
-			headers: typeof argv.headers === "string" ? JSON.parse(argv.headers) : {},
-			schema: argv.schema
-		});
-	} catch (error) {
-		if (error instanceof z.ZodError) {
-			console.error("Invalid configuration:");
-			console.error(
-				error.errors
-					.map((e) => `  ${e.path.join(".")}: ${e.message}`)
-					.join("\n"),
-			);
-		} else {
-			console.error("Error parsing arguments:", error);
-		}
-		process.exit(1);
-	}
-}
-
-const config = parseArgs();
-
-const server = new McpServer({
-	name: config.name,
-	version: getVersion(),
-	description: `GraphQL MCP server for ${config.endpoint}`,
+const EnvSchema = z.object({
+	NAME: z.string().default("mcp-graphql"),
+	ENDPOINT: z.string().url().default("http://localhost:4000/graphql"),
+	ALLOW_MUTATIONS: z.boolean().default(false),
+	HEADERS: z
+		.string()
+		.default("{}")
+		.transform((val) => {
+			try {
+				return JSON.parse(val);
+			} catch (e) {
+				throw new Error("HEADERS must be a valid JSON string");
+			}
+		}),
+	SCHEMA: z.string().optional(),
 });
 
-server.resource(
-	"graphql-schema",
-	new URL(config.endpoint).href,
-	async (uri) => {
-		try {
-			let schema: string;
-			if (config.schema) {
-				schema = await introspectLocalSchema(config.schema);
-			} else {
-				schema = await introspectEndpoint(config.endpoint, config.headers);
-			}
+const env = EnvSchema.parse(process.env);
 
-			return {
-				contents: [
-					{
-						uri: uri.href,
-						text: schema,
-					},
-				],
-			};
-		} catch (error) {
-			throw new Error(`Failed to get GraphQL schema: ${error}`);
+const server = new McpServer({
+	name: env.NAME,
+	version: getVersion(),
+	description: `GraphQL MCP server for ${env.ENDPOINT}`,
+});
+
+server.resource("graphql-schema", new URL(env.ENDPOINT).href, async (uri) => {
+	try {
+		let schema: string;
+		if (env.SCHEMA) {
+			schema = await introspectLocalSchema(env.SCHEMA);
+		} else {
+			schema = await introspectEndpoint(env.ENDPOINT, env.HEADERS);
 		}
-	},
-);
+
+		return {
+			contents: [
+				{
+					uri: uri.href,
+					text: schema,
+				},
+			],
+		};
+	} catch (error) {
+		throw new Error(`Failed to get GraphQL schema: ${error}`);
+	}
+});
 
 server.tool(
 	"introspect-schema",
 	"Introspect the GraphQL schema, use this tool before doing a query to get the schema information if you do not have it available as a resource already.",
 	{
-		endpoint: z.string().url().optional()
-			.describe(`Optional: Override the default endpoint, the already used endpoint is: ${config.endpoint}`),
-		headers: z.union([z.record(z.string()), z.string()]).optional()
-			.describe(`Optional: Add additional headers, the already used headers are: ${JSON.stringify(config.headers)}`),
+		endpoint: z
+			.string()
+			.url()
+			.optional()
+			.describe(
+				`Optional: Override the default endpoint, the already used endpoint is: ${env.ENDPOINT}`,
+			),
+		headers: z
+			.union([z.record(z.string()), z.string()])
+			.optional()
+			.describe(
+				`Optional: Add additional headers, the already used headers are: ${JSON.stringify(env.HEADERS)}`,
+			),
 	},
 	async ({ endpoint, headers }) => {
 		try {
 			let schema: string;
-			if (config.schema) {
-				schema = await introspectLocalSchema(config.schema);
+			if (env.SCHEMA) {
+				schema = await introspectLocalSchema(env.SCHEMA);
 			} else {
-				const useEndpoint = endpoint || config.endpoint;
-				const useHeaders = parseAndMergeHeaders(config.headers, headers);
+				const useEndpoint = endpoint || env.ENDPOINT;
+				const useHeaders = parseAndMergeHeaders(env.HEADERS, headers);
 				schema = await introspectEndpoint(useEndpoint, useHeaders);
 			}
 
@@ -154,10 +120,19 @@ server.tool(
 	{
 		query: z.string(),
 		variables: z.string().optional(),
-		endpoint: z.string().url().optional()
-			.describe(`Optional: Override the default endpoint, the already used endpoint is: ${config.endpoint}`),
-		headers: z.union([z.record(z.string()), z.string()]).optional()
-			.describe(`Optional: Add additional headers, the already used headers are: ${JSON.stringify(config.headers)}`),
+		endpoint: z
+			.string()
+			.url()
+			.optional()
+			.describe(
+				`Optional: Override the default endpoint, the already used endpoint is: ${env.ENDPOINT}`,
+			),
+		headers: z
+			.union([z.record(z.string()), z.string()])
+			.optional()
+			.describe(
+				`Optional: Add additional headers, the already used headers are: ${JSON.stringify(env.HEADERS)}`,
+			),
 	},
 	async ({ query, variables, endpoint, headers }) => {
 		try {
@@ -169,7 +144,7 @@ server.tool(
 					def.kind === "OperationDefinition" && def.operation === "mutation",
 			);
 
-			if (isMutation && !config.allowMutations) {
+			if (isMutation && !env.ALLOW_MUTATIONS) {
 				return {
 					isError: true,
 					content: [
@@ -193,9 +168,9 @@ server.tool(
 		}
 
 		try {
-			const useEndpoint = endpoint || config.endpoint;
-			const useHeaders = parseAndMergeHeaders(config.headers, headers);
-			
+			const useEndpoint = endpoint || env.ENDPOINT;
+			const useHeaders = parseAndMergeHeaders(env.HEADERS, headers);
+
 			const response = await fetch(useEndpoint, {
 				method: "POST",
 				headers: {
@@ -250,7 +225,7 @@ async function main() {
 	await server.connect(transport);
 
 	console.error(
-		`Started graphql mcp server ${config.name} for endpoint: ${config.endpoint}`,
+		`Started graphql mcp server ${env.NAME} for endpoint: ${env.ENDPOINT}`,
 	);
 }
 
