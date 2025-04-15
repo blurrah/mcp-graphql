@@ -18,7 +18,7 @@ checkDeprecatedArguments();
 const EnvSchema = z.object({
 	NAME: z.string().default("mcp-graphql"),
 	ENDPOINT: z.string().url().default("http://localhost:4000/graphql"),
-	ALLOW_MUTATIONS: z.boolean().default(false),
+	ALLOW_MUTATIONS: z.enum(['true', 'false']).transform((value) => value === 'true').default("false"),
 	HEADERS: z
 		.string()
 		.default("{}")
