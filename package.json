@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.6.1",
+    "express": "^4.18.3",
     "graphql": "^16.10.0",
     "yargs": "17.7.2",
     "zod": "3.24.2",

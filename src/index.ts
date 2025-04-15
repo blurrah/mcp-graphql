@@ -2,6 +2,8 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import express from "express";
 import { parse } from "graphql/language";
 import { z } from "zod";
 import { checkDeprecatedArguments } from "./helpers/deprecation.js";
@@ -30,6 +32,7 @@ const EnvSchema = z.object({
 			}
 		}),
 	SCHEMA: z.string().optional(),
+	BIND: z.string().optional().describe("Optional: Port number to bind the HTTP server (e.g. '3000'). If not set, uses stdio transport."),
 });
 
 const env = EnvSchema.parse(process.env);
@@ -212,12 +215,51 @@ server.tool(
 );
 
 async function main() {
-	const transport = new StdioServerTransport();
-	await server.connect(transport);
-
-	console.error(
-		`Started graphql mcp server ${env.NAME} for endpoint: ${env.ENDPOINT}`,
-	);
+	if (env.BIND) {
+		const port = parseInt(env.BIND);
+		if (isNaN(port)) {
+			throw new Error("BIND must be a valid port number");
+		}
+		
+		const app = express();
+		
+		// to support multiple simultaneous connections we have a lookup object from
+		// sessionId to transport
+		const transports: {[sessionId: string]: SSEServerTransport} = {};
+		
+		app.get("/sse", async (_, res) => {
+			const transport = new SSEServerTransport('/messages', res);
+			transports[transport.sessionId] = transport;
+			res.on("close", () => {
+				delete transports[transport.sessionId];
+			});
+			await server.connect(transport);
+		});
+		
+		app.post("/messages", async (req, res) => {
+			const sessionId = req.query.sessionId as string;
+			const transport = transports[sessionId];
+			if (transport) {
+				await transport.handlePostMessage(req, res);
+			} else {
+				res.status(400).send('No transport found for sessionId');
+			}
+		});
+		
+		app.listen(port, () => {
+			console.error(
+				`Started graphql mcp server ${env.NAME} for endpoint: ${env.ENDPOINT} on port ${port}`,
+			);
+			console.error(`SSE endpoint: http://0.0.0.0:${port}/sse`);
+			console.error(`Messages endpoint: http://0.0.0.0:${port}/messages`);
+		});
+	} else {
+		const transport = new StdioServerTransport();
+		await server.connect(transport);
+		console.error(
+			`Started graphql mcp server ${env.NAME} for endpoint: ${env.ENDPOINT}`,
+		);
+	}
 }
 
 main().catch((error) => {

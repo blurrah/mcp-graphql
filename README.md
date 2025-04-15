@@ -21,6 +21,7 @@ Run `mcp-graphql` with the correct endpoint, it will automatically try to intros
 | `ALLOW_MUTATIONS` | Enable mutation operations (disabled by default) | `false` |
 | `NAME` | Name of the MCP server | `mcp-graphql` |
 | `SCHEMA` | Path to a local GraphQL schema file (optional) | - |
+| `BIND` | Port number to bind the HTTP server (e.g. '3000'). If not set, uses stdio transport | - |
 
 ### Examples
 
@@ -36,7 +37,14 @@ ENDPOINT=http://localhost:3000/graphql ALLOW_MUTATIONS=true npx mcp-graphql
 
 # Using a local schema file instead of introspection
 ENDPOINT=http://localhost:3000/graphql SCHEMA=./schema.graphql npx mcp-graphql
+
+# Using HTTP transport with SSE instead of stdio
+ENDPOINT=http://localhost:3000/graphql BIND=3000 npx mcp-graphql
 ```
+
+When using HTTP transport (BIND is set), the server exposes two endpoints:
+1. `/sse` - Server-Sent Events endpoint for receiving server messages
+2. `/messages` - POST endpoint for sending messages to the server (requires sessionId query parameter)
 
 ## Resources
 
