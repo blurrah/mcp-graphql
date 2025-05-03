@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/blurrah-mcp-graphql-badge.png)](https://mseep.ai/app/blurrah-mcp-graphql)
+
 # mcp-graphql
 
 [![smithery badge](https://smithery.ai/badge/mcp-graphql)](https://smithery.ai/server/mcp-graphql)
