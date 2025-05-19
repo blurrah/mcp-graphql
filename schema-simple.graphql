@@ -1,0 +1,91 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Query {
+  """Get a user by ID"""
+  user(id: ID!): User
+
+  """Get all users"""
+  users: [User!]!
+
+  """Get a post by ID"""
+  post(id: ID!): Post
+
+  """Get all posts"""
+  posts: [Post!]!
+
+  """Get all comments for a post"""
+  commentsByPost(postId: ID!): [Comment!]!
+}
+
+type Mutation {
+  """Create a new user"""
+  createUser(input: CreateUserInput!): User!
+
+  """Update an existing user"""
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+
+  """Delete a user"""
+  deleteUser(id: ID!): Boolean!
+
+  """Create a new post"""
+  createPost(input: CreatePostInput!): Post!
+
+  """Add a comment to a post"""
+  addComment(input: AddCommentInput!): Comment!
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  posts: [Post!]!
+  comments: [Comment!]!
+  createdAt: String!
+  updatedAt: String
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  published: Boolean!
+  author: User!
+  comments: [Comment!]!
+  createdAt: String!
+  updatedAt: String
+}
+
+type Comment {
+  id: ID!
+  text: String!
+  post: Post!
+  author: User!
+  createdAt: String!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String!
+}
+
+input UpdateUserInput {
+  name: String
+  email: String
+}
+
+input CreatePostInput {
+  title: String!
+  content: String!
+  published: Boolean
+  authorId: ID!
+}
+
+input AddCommentInput {
+  text: String!
+  postId: ID!
+  authorId: ID!
+}
+
