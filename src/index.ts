@@ -199,6 +199,9 @@ server.tool(
 	},
 );
 
+/**
+ * Sets up the transport and starts the server with it
+ */
 async function main() {
 	const transport = new StdioServerTransport();
 	await server.connect(transport);

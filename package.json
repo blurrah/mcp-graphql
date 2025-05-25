@@ -1,34 +1,33 @@
 {
-  "name": "mcp-graphql",
-  "module": "index.ts",
-  "type": "module",
-  "version": "2.0.1",
-  "repository": "github:blurrah/mcp-graphql",
-  "license": "MIT",
-  "bin": {
-    "mcp-graphql": "./dist/index.js"
-  },
-  "files": [
-    "dist"
-  ],
-  "devDependencies": {
-    "@graphql-tools/schema": "^10.0.21",
-    "@types/bun": "latest",
-    "@types/yargs": "17.0.33",
-    "graphql-yoga": "^5.13.1",
-    "typescript": "5.8.2"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "1.6.1",
-    "graphql": "^16.10.0",
-    "yargs": "17.7.2",
-    "zod": "3.24.2",
-    "zod-to-json-schema": "3.24.3"
-  },
-  "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target node && bun -e \"require('fs').chmodSync('dist/index.js', '755')\"",
-    "start": "bun run dist/index.js"
-  },
-  "packageManager": "bun@1.2.4"
+	"name": "mcp-graphql",
+	"module": "index.ts",
+	"type": "module",
+	"version": "2.0.1",
+	"repository": "github:blurrah/mcp-graphql",
+	"license": "MIT",
+	"bin": {
+		"mcp-graphql": "./dist/index.js"
+	},
+	"files": ["dist"],
+	"devDependencies": {
+		"@graphql-tools/schema": "^10.0.21",
+		"@types/bun": "latest",
+		"@types/yargs": "17.0.33",
+		"graphql-yoga": "^5.13.1",
+		"typescript": "5.8.2"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "1.6.1",
+		"graphql": "^16.10.0",
+		"yargs": "17.7.2",
+		"zod": "3.24.2",
+		"zod-to-json-schema": "3.24.3"
+	},
+	"scripts": {
+		"dev": "bun --watch src/index.ts",
+		"dev:new": "bun --watch src/server.ts",
+		"build": "bun build src/index.ts --outdir dist --target node && bun -e \"require('fs').chmodSync('dist/index.js', '755')\"",
+		"start": "bun run dist/index.js"
+	},
+	"packageManager": "bun@1.2.4"
 }
