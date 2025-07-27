@@ -20,7 +20,7 @@ Run `mcp-graphql` with the correct endpoint, it will automatically try to intros
 | `HEADERS` | JSON string containing headers for requests | `{}` |
 | `ALLOW_MUTATIONS` | Enable mutation operations (disabled by default) | `false` |
 | `NAME` | Name of the MCP server | `mcp-graphql` |
-| `SCHEMA` | Path to a local GraphQL schema file (optional) | - |
+| `SCHEMA` | Path to a local GraphQL schema file or URL (optional) | - |
 
 ### Examples
 
@@ -36,18 +36,21 @@ ENDPOINT=http://localhost:3000/graphql ALLOW_MUTATIONS=true npx mcp-graphql
 
 # Using a local schema file instead of introspection
 ENDPOINT=http://localhost:3000/graphql SCHEMA=./schema.graphql npx mcp-graphql
+
+# Using a schema file hosted at a URL
+ENDPOINT=http://localhost:3000/graphql SCHEMA=https://example.com/schema.graphql npx mcp-graphql
 ```
 
 ## Resources
 
-- **graphql-schema**: The server exposes the GraphQL schema as a resource that clients can access. This is either the local schema file or based on an introspection query.
+- **graphql-schema**: The server exposes the GraphQL schema as a resource that clients can access. This is either the local schema file, a schema file hosted at a URL, or based on an introspection query.
 
 ## Available Tools
 
 The server provides two main tools:
 
 1. **introspect-schema**: This tool retrieves the GraphQL schema. Use this first if you don't have access to the schema as a resource.
-This uses either the local schema file or an introspection query.
+This uses either the local schema file, a schema file hosted at a URL, or an introspection query.
 
 2. **query-graphql**: Execute GraphQL queries against the endpoint. By default, mutations are disabled unless `ALLOW_MUTATIONS` is set to `true`.
 
