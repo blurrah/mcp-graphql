@@ -119,7 +119,7 @@ server.tool(
 	"Query a GraphQL endpoint with the given query and variables",
 	{
 		query: z.string(),
-		variables: z.string().optional(),
+		variables: z.record(z.any()).optional(),
 	},
 	async ({ query, variables }) => {
 		try {
