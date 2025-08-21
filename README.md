@@ -1,4 +1,5 @@
 # mcp-graphql
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/blurrah/mcp-graphql)](https://archestra.ai/mcp-catalog/blurrah__mcp-graphql)
 
 [![smithery badge](https://smithery.ai/badge/mcp-graphql)](https://smithery.ai/server/mcp-graphql)
 
