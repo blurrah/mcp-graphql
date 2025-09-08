@@ -1,0 +1,41 @@
+# Development files
+dev/
+examples/
+src/
+test/
+*.ts
+!dist/**/*.d.ts
+
+# Configuration files
+.graphqlrc.yml
+.graphqlrc.json
+.graphqlrc
+graphql.config.js
+tsconfig.json
+biome.json
+bun.lock
+
+# Documentation
+CLAUDE.md
+*.example.*
+
+# Git and CI
+.git/
+.github/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

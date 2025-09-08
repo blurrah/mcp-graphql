@@ -1,0 +1,51 @@
+# GraphQL Config for mcp-graphql
+# This file configures GraphQL operations and schema for the MCP server
+
+# Schema location - can be:
+# - Local file: ./schema.graphql
+# - URL: https://api.example.com/graphql
+# - Introspection endpoint: http://localhost:4000/graphql
+schema: ${SCHEMA:-http://localhost:4000/graphql}
+
+# Documents - GraphQL operations to load as MCP tools
+# Supports glob patterns
+documents:
+  - './examples/graphql/**/*.graphql'
+  - './examples/graphql/**/*.gql'
+
+# Extensions for additional configuration
+extensions:
+  # Endpoint configuration
+  endpoints:
+    default:
+      # GraphQL endpoint URL
+      url: ${ENDPOINT:-http://localhost:4000/graphql}
+      # Headers for requests (supports environment variables)
+      headers:
+        Authorization: Bearer ${API_TOKEN}
+        Content-Type: application/json
+
+# Multi-project example (commented out)
+# Uncomment to use multiple projects with different configurations
+# projects:
+#   # Production API
+#   production:
+#     schema: https://api.example.com/graphql
+#     documents: './examples/graphql/production/**/*.graphql'
+#     extensions:
+#       endpoints:
+#         default:
+#           url: https://api.example.com/graphql
+#           headers:
+#             Authorization: Bearer ${PROD_TOKEN}
+#   
+#   # Development API
+#   development:
+#     schema: http://localhost:4000/graphql
+#     documents: './examples/graphql/dev/**/*.graphql'
+#     extensions:
+#       endpoints:
+#         default:
+#           url: http://localhost:4000/graphql
+#           headers:
+#             Authorization: Bearer ${DEV_TOKEN}

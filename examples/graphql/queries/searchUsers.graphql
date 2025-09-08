@@ -1,0 +1,12 @@
+query SearchUsers($query: String!, $filters: UserFilters) {
+  searchUsers(query: $query, filters: $filters) {
+    totalCount
+    users {
+      id
+      name
+      email
+      role
+      isActive
+    }
+  }
+}

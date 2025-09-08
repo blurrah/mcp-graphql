@@ -1,0 +1,18 @@
+{
+  "schema": "http://localhost:4000/graphql",
+  "documents": [
+    "./examples/graphql/**/*.graphql",
+    "./examples/graphql/**/*.gql"
+  ],
+  "extensions": {
+    "endpoints": {
+      "default": {
+        "url": "http://localhost:4000/graphql",
+        "headers": {
+          "Authorization": "Bearer ${API_TOKEN}",
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  }
+}

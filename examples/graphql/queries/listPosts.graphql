@@ -1,0 +1,13 @@
+query ListPosts($limit: Int = 10, $offset: Int = 0) {
+  posts(limit: $limit, offset: $offset) {
+    id
+    title
+    content
+    author {
+      id
+      name
+    }
+    createdAt
+    updatedAt
+  }
+}
