@@ -41,6 +41,10 @@ ENDPOINT=http://localhost:3000/graphql SCHEMA=./schema.graphql npx mcp-graphql
 ENDPOINT=http://localhost:3000/graphql SCHEMA=https://example.com/schema.graphql npx mcp-graphql
 ```
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/blurrah-mcp-graphql).
+
 ## Resources
 
 - **graphql-schema**: The server exposes the GraphQL schema as a resource that clients can access. This is either the local schema file, a schema file hosted at a URL, or based on an introspection query.
