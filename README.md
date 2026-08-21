@@ -1,6 +1,6 @@
 # mcp-graphql
 
-[![smithery badge](https://smithery.ai/badge/mcp-graphql)](https://smithery.ai/server/mcp-graphql)
+[![Listed on Skillselion](https://skillselion.com/badge/mcp/tool/io.github.blurrah/mcp-graphql.svg)](https://skillselion.com/mcp/tool/io.github.blurrah/mcp-graphql)
 
 A Model Context Protocol server that enables LLMs to interact with GraphQL APIs. This implementation provides schema introspection and query execution capabilities, allowing models to discover and use GraphQL APIs dynamically.
 
